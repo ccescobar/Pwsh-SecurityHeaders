@@ -17,12 +17,15 @@ function checkSite
         [Parameter(Mandatory = $true)]
         [String]$Site
     )
+    #Base url with variable for url
     $sitedata = Invoke-WebRequest "https://securityheaders.com/?q=$site&hide=on&followRedirects=on"
-
+    
+    #store the report table 
     $reports = $sitedata.ParsedHtml.body.getElementsByClassName("reportSection")
 
     $outObjects = @()
     
+    #error handling if site is not found.
     if ($sitedata.RawContent | ForEach-Object { $_ -like "*Sorry*" })
     {
 
@@ -35,7 +38,7 @@ function checkSite
 
         $reports | ForEach-Object {
             $title = ($_.getElementsByClassName("reportTitle") | Select-Object innerhtml).innerhtml
-            #Write-Host "Got the title: $title"
+         
             if ($title -like "*Support*" )
             {
         
@@ -47,8 +50,8 @@ function checkSite
                 $cells = ($_.getElementsByTagName("table")[0].cells | Select-Object innertext).innertext
 
                 $hash = @{ }
-              #  $hash.add("Title",$title)
-            
+                
+                #cicle throught each cell and add data to the object.
                 for ($i = 0; $i -lt $cells.Count; $i = $i + 2)
                 {
                     if ($hash.ContainsKey($cells[$i]))
@@ -68,7 +71,6 @@ function checkSite
                         $hash.Add($cells[$i], $cells[$i + 1])
                     }
                 }
-                 #   $JsonProperties.$title += $hash
                 If ($title -like "*Summary*")
                 {
                     $hash.add("Grade", $siteData.Headers.'X-Grade')
