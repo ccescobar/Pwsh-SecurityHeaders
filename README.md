@@ -4,7 +4,7 @@ This script aims to pull and parse the data from SecurityHeaders.com so that the
 
 ## Usage
 
-By default, this works by taking either a single site or a file containing a list of sites separated by newlines
+By default, this works by taking either a single site or a file containing a list of sites separated by newlines. 
 
 ```powershell
 # Single Site
@@ -20,5 +20,4 @@ By default, this works by taking either a single site or a file containing a lis
 ## Todo
 
 * PowerShell Core Support
-* Complex object output instead of array of objects
 * Verbose Output
