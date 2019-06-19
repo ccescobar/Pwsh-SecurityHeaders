@@ -1,9 +1,41 @@
+<#
+    .SYNOPSIS
+        Simple Script designed to parse data output from SecurityHeaders.com
+    .DESCRIPTION
+        This is a simple script designed to parse data output from SecurityHeaders.com for a given site. An array of objects with header details is provided as output.
+    .PARAMETER Site
+        Url of a site to test
+    .PARAMETER File
+        Location of a file containing a newline separated list of sites to test
+    .PARAMETER Json
+        Optionally provide the output as JSON
+    
+    #The following parameters have been enabled by default inside the URL. 
+    # .PARAMETER FollowRedirects
+    #     Whether or not the site should follow redirects
+    # .PARAMETER HideResults
+    #     Option to hide results from SecurityHeaders.com main page
+
+    .EXAMPLE
+        # Single Site
+        .\Get-SecurityHeaders.ps1 -Site google.com
+        # List of sites
+        .\Get-SecurityHeaders.ps1 -Path C:\sitelist.txt
+        # Optional JSON Output Switch
+        .\Get-SecurityHeaders.ps1 -Site google.com -Json
+    .NOTES
+        Written by Cody Ernesti and Christian Escobar
+    .LINK
+        https://github.com/ccescobar/Pwsh-SecurityHeaders.git
+#>
+
 Param(
     [Parameter(ParameterSetName = "Site")]
     [String]$Site,
 
     [Parameter(ParameterSetName = "File")]
     [String]$Path,
+
 
     [Switch]$Json
 
@@ -14,22 +46,20 @@ Param(
 function checkSite
 {
     Param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, Position=0)]
         [String]$Site
     )
-    #Base url with variable for url
     $sitedata = Invoke-WebRequest "https://securityheaders.com/?q=$site&hide=on&followRedirects=on"
-    
-    #store the report table 
+
     $reports = $sitedata.ParsedHtml.body.getElementsByClassName("reportSection")
 
     $outObjects = @()
     
-    #error handling if site is not found.
     if ($sitedata.RawContent | ForEach-Object { $_ -like "*Sorry*" })
     {
 
-        write-warning "Uh-Oh The site provided does not have results.`nPlease verify the url is correct, and run the script again." 
+        Write-Warning "The site provided does not have results.`
+        Please verify the url is correct, and run the script again."
         break;
     }
     else
@@ -38,10 +68,10 @@ function checkSite
 
         $reports | ForEach-Object {
             $title = ($_.getElementsByClassName("reportTitle") | Select-Object innerhtml).innerhtml
-         
+            #Write-Host "Got the title: $title"
             if ($title -like "*Support*" )
             {
-        
+                #Do nothing for this case.
             }
             else
             {
@@ -50,10 +80,13 @@ function checkSite
                 $cells = ($_.getElementsByTagName("table")[0].cells | Select-Object innertext).innertext
 
                 $hash = @{ }
-                
-                #cicle throught each cell and add data to the object.
+              #  $hash.add("Title",$title)
+            
                 for ($i = 0; $i -lt $cells.Count; $i = $i + 2)
                 {
+                    #Progress Bar
+                    Write-Progress -Activity "Getting Data" -Status "$i% Complete:" -PercentComplete $i;
+                    
                     if ($hash.ContainsKey($cells[$i]))
                     {
                         $a = $hash.Keys -like "$($cells[$i])*"
@@ -71,6 +104,7 @@ function checkSite
                         $hash.Add($cells[$i], $cells[$i + 1])
                     }
                 }
+                 #   $JsonProperties.$title += $hash
                 If ($title -like "*Summary*")
                 {
                     $hash.add("Grade", $siteData.Headers.'X-Grade')
@@ -81,7 +115,7 @@ function checkSite
             
         }
         $outObjects += New-Object PSObject -Property $JsonProperties
-return $outObjects
+        return $outObjects
     }
 }
 
@@ -91,10 +125,13 @@ if ($PSCmdlet.ParameterSetName -eq "Site")
 {
     if ($Json)
     {
+        #start a timer to show progress 
         return checkSite -Site $Site | ConvertTo-Json
     }
     else
     {
+        # #start a timer to show progress 
+        # $stopwatch =  [system.diagnostics.stopwatch]::StartNew()
         return checkSite -Site $Site
     }
 }
